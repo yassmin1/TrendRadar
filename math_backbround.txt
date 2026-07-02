@@ -1,0 +1,294 @@
+The app currently includes these math / data science concepts:
+
+1. Descriptive statistics
+
+- Post counts
+- Source counts
+- Platform counts
+- Topic counts
+- Engagement totals
+- Mean sentiment
+- Mean sentiment confidence
+- Min/max timestamps
+- Value counts for hashtags, links, sources, sentiment labels, lifecycle labels
+
+2. Time-series aggregation
+
+Posts are grouped into time windows:
+
+- `1h`
+- `6h`
+- `24h`
+- `7d`
+
+Used for trend timelines and spike detection.
+
+3. Rolling baseline
+
+For each topic, the app compares the current post count to recent previous windows.
+
+It uses a rolling 3-window baseline:
+
+```text
+baseline = mean(previous 3 windows)
+```
+
+4. Standard deviation
+
+The app calculates rolling standard deviation of previous post counts to understand normal variation.
+
+5. Z-score spike detection
+
+Used to detect emerging trends.
+
+```text
+z_score = (current_post_count - baseline_post_count) / rolling_std
+```
+
+Higher z-score means the topic is unusually active compared with its recent baseline.
+
+6. Growth rate
+
+Used to compare current activity with the previous window.
+
+```text
+growth_rate = (current_post_count - previous_post_count) / previous_post_count
+```
+
+If previous count is zero, the app avoids division by zero by using `1`.
+
+7. Trend lifecycle classification
+
+The app labels trends as states like:
+
+- `new`
+- `emerging`
+- `growing`
+- `declining`
+- `stable`
+
+This is based on post count, previous count, z-score, and growth rate.
+
+8. Alert logic / thresholding
+
+The app generates alerts when a trend crosses configured thresholds:
+
+- minimum post count
+- z-score threshold
+- growth-rate threshold
+- emerging lifecycle status
+
+9. Sentiment analysis
+
+The app scores text sentiment using the selected backend:
+
+- `vader`
+- `textblob`
+- `lexicon`
+- `auto`
+
+It produces:
+
+- `sentiment_score`
+- `sentiment_label`
+- `sentiment_confidence`
+- `sentiment_subjectivity`
+- `sentiment_reason`
+
+10. Text polarity scoring
+
+For sentiment:
+
+```text
+positive > 0
+neutral ≈ 0
+negative < 0
+```
+
+The lexicon backend uses positive/negative word hits:
+
+```text
+score = (positive_hits - negative_hits) / word_count
+```
+
+11. Confidence scoring
+
+The app estimates confidence from sentiment strength:
+
+```text
+confidence = min(abs(sentiment_score) * 2, 1.0)
+```
+
+12. Topic inference
+
+If a post has no explicit topic, the app infers topics from the text using frequent terms / extracted text signals.
+
+13. Topic normalization / grouping
+
+Similar topic labels are grouped together so the dashboard does not split the same subject into too many small labels.
+
+Example:
+
+```text
+"AI"
+"artificial intelligence"
+"#AI"
+```
+
+can be grouped into a common topic group.
+
+14. TF-IDF vectorization
+
+Used for topic clustering.
+
+TF-IDF means “term frequency–inverse document frequency.” It gives higher weight to words that are important in a document but not common everywhere.
+
+15. K-Means clustering
+
+Used to group similar posts into topic clusters.
+
+The app uses:
+
+```text
+TF-IDF text vectors → KMeans → topic_cluster
+```
+
+16. Cluster summarization
+
+For each cluster, the app calculates:
+
+- number of posts
+- total engagement
+- average sentiment
+- top representative terms
+
+17. Simple forecasting
+
+The app forecasts the next trend window using recent slope.
+
+```text
+slope = (latest_count - earlier_count) / number_of_steps
+forecast_next = latest_count + slope
+```
+
+This is lightweight trend projection, not a full statistical forecasting model.
+
+18. Trend direction classification
+
+Forecasts are labeled by direction:
+
+- increasing
+- decreasing
+- flat
+
+19. Network-style analysis
+
+The app builds a simple influence/network summary from:
+
+- hashtags
+- mentions
+- shared links
+- sources
+
+20. Centrality-style scoring
+
+The network score is a simple weighted formula:
+
+```text
+centrality_score = count + co_occurrence_count * 0.5 + engagement_count * 0.01
+```
+
+This is not full graph theory centrality like PageRank, but it gives a useful influence-style ranking.
+
+21. Co-occurrence counting
+
+The app counts when entities appear together, such as:
+
+- hashtag + link
+- source + hashtag
+- mention + shared link
+
+22. Source ranking / amplification scoring
+
+The app ranks possible trend origins using:
+
+- how early the source appeared
+- engagement
+- repeated URLs
+- repeated hashtags
+- repeated phrases
+
+Formula conceptually:
+
+```text
+amplification_score =
+  early_score
+  + engagement_weight
+  + repeated_url_score
+  + repeated_hashtag_score
+  + repeated_phrase_score
+```
+
+23. Duplicate detection
+
+The app removes duplicate records using:
+
+```text
+platform + post_id
+```
+
+24. Data quality scoring
+
+The app scores dataset quality using:
+
+- required column completeness
+- duplicate ratio
+- timestamp validity
+- overall quality average
+
+25. Missing-value analysis
+
+For important fields, the app checks the ratio of non-empty values.
+
+Example:
+
+```text
+text_completeness = non_empty_text_rows / total_rows
+```
+
+26. Timestamp validation
+
+The app checks whether `created_at` values can be parsed as valid UTC timestamps.
+
+27. Recency filtering
+
+Live data is filtered to a recent time window, currently controlled by:
+
+```text
+LIVE_LOOKBACK_DAYS
+```
+
+This prevents very old or future-dated search results from distorting trend analysis.
+
+28. Ranking and sorting
+
+Used throughout the dashboard for:
+
+- top sources
+- top hashtags
+- most shared links
+- strongest trends
+- highest engagement
+- highest centrality
+- strongest alerts
+
+Not currently included:
+
+- deep learning models
+- embeddings-based semantic search
+- LDA topic modeling
+- ARIMA/Prophet forecasting
+- PageRank
+- causal inference
+- anomaly detection beyond rolling z-score
+- regression modeling beyond simple slope-based forecast

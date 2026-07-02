@@ -1,0 +1,223 @@
+Social Media Trend Tracker - API Account And Token Setup
+=========================================================
+
+This app can run in two modes:
+
+1. Mock mode
+   - No accounts or API tokens are required.
+   - Run:
+     python main.py
+     streamlit run dashboard/app.py
+
+2. Live mode
+   - Requires official API credentials from X and/or Meta.
+   - Put credentials in a local .env file.
+   - Never commit .env or paste tokens into source code.
+
+
+Required .env Variables
+-----------------------
+
+Copy .env.example to .env:
+
+  copy .env.example .env
+
+For live collection, edit .env:
+
+  API_MODE=live
+  X_BEARER_TOKEN=your_x_api_v2_bearer_token
+  X_COLLECTION_MODE=cheap_first
+  X_CACHE_TTL_MINUTES=360
+  X_DAILY_REQUEST_BUDGET=5
+  ENABLE_API_HEALTH_ON_RUN=false
+  COLLECT_META=false
+  META_ACCESS_TOKEN=your_meta_graph_api_token
+  COLLECT_GDELT=true
+  COLLECT_RSS=false
+  RSS_FEEDS=https://hnrss.org/frontpage,https://www.reddit.com/r/technology/.rss
+  COLLECT_WIKIPEDIA=true
+  WIKIPEDIA_ARTICLES=Artificial intelligence,Climate change,Election
+  COLLECT_HACKERNEWS=true
+  FACEBOOK_PAGE_ACCESS_TOKEN=
+  FACEBOOK_PAGE_IDS=
+  DEFAULT_COUNTRY=US
+  MAX_PAGES_PER_QUERY=3
+  REQUEST_TIMEOUT_SECONDS=30
+  SCHEDULE_MINUTES=60
+  DATABASE_URL=
+  TREND_WINDOW=6h
+  TREND_Z_THRESHOLD=1.0
+  ALERT_Z_THRESHOLD=2.0
+  ALERT_GROWTH_THRESHOLD=1.0
+  ALERT_MIN_POSTS=3
+  ALERT_WEBHOOK_URL=
+
+
+X / Twitter API v2 Setup
+------------------------
+
+Token needed by this app:
+
+  X_BEARER_TOKEN
+
+Use this for public X API v2 recent search by keyword or hashtag.
+
+Steps:
+
+1. Create or use an X account.
+
+2. Go to the X Developer Platform:
+
+   https://developer.x.com/
+   or
+   https://console.x.com/
+
+3. Apply for developer/API access if your account does not already have it.
+   X may require billing/project setup depending on the current access tier.
+
+4. In the developer console, create a Project and App.
+
+5. Open the App settings.
+
+6. Go to the App's "Keys and tokens" or credentials area.
+
+7. Generate or copy the Bearer Token.
+
+8. Add it to .env:
+
+   X_BEARER_TOKEN=your_token_here
+
+9. Test live collection:
+
+   python main.py --live --query "AI" --max-pages 1
+
+Notes:
+
+- This app uses app-only Bearer Token authentication for public search.
+- Keep the token secret.
+- If a token is exposed, regenerate it in the X Developer Console.
+- Respect X API rate limits and product-tier limits.
+- The app handles HTTP 429 rate-limit responses with backoff.
+
+
+Meta Ad Library API Setup
+-------------------------
+
+Token needed by this app:
+
+  META_ACCESS_TOKEN
+
+Use this for public Meta Ad Library records, such as public ads and
+campaign-related trend analysis.
+
+Steps:
+
+1. Create or use a Facebook account.
+
+2. Go to Meta for Developers:
+
+   https://developers.facebook.com/
+
+3. Create a Meta Developer account if you do not already have one.
+
+4. Create a new App in the Meta Developer dashboard.
+
+5. Make sure your app can use the Graph API.
+
+6. Use Graph API Explorer or the app dashboard to generate an access token.
+
+   Graph API Explorer:
+   https://developers.facebook.com/tools/explorer/
+
+7. Select your app in Graph API Explorer.
+
+8. Generate a User Access Token that can call the Ad Library endpoint.
+
+9. Add it to .env:
+
+   META_ACCESS_TOKEN=your_token_here
+
+10. Test live collection:
+
+   python main.py --live --include-meta --query "AI" --country US --max-pages 1
+
+Notes:
+
+- Meta tokens can expire. If collection starts failing with access errors,
+  generate a new token or create a longer-lived token using Meta's documented
+  token flow.
+- API fields and availability depend on Meta's current rules, your app, your
+  account, region, and permissions.
+- The app only uses public Ad Library data. Do not use this project to collect
+  private profiles, private groups, private messages, or restricted user data.
+
+
+Optional Facebook Pages Setup
+-----------------------------
+
+Tokens/values used by the optional page collector:
+
+  FACEBOOK_PAGE_ACCESS_TOKEN
+  FACEBOOK_PAGE_IDS
+
+Only configure these if you have approved Page Public Content Access or an
+authorized page token for pages you are allowed to access.
+
+Steps:
+
+1. In Meta for Developers, create or use an app.
+
+2. Request and receive approval for any required Page Public Content Access
+   permissions, if needed.
+
+3. Generate a Page Access Token for the approved/authorized page.
+
+4. Add values to .env:
+
+   FACEBOOK_PAGE_ACCESS_TOKEN=your_page_token_here
+   FACEBOOK_PAGE_IDS=123456789,987654321
+
+Important restrictions:
+
+- Do not collect private profiles.
+- Do not collect private groups.
+- Do not collect restricted user data.
+- Do not bypass Meta access controls.
+- Use only official APIs and approved access.
+
+
+Useful Official Documentation
+-----------------------------
+
+X API getting access:
+https://docs.x.com/x-api/getting-started/getting-access
+
+X bearer tokens:
+https://docs.x.com/fundamentals/authentication/oauth-2-0/bearer-tokens
+
+X API overview:
+https://docs.x.com/x-api/introduction
+
+Meta access tokens:
+https://developers.facebook.com/documentation/facebook-login/guides/access-tokens
+
+Meta Graph API getting started:
+https://developers.facebook.com/docs/graph-api/get-started/
+
+Meta Ad Library API:
+https://www.facebook.com/ads/library/api/
+
+Meta Ads Archive Graph API reference:
+https://developers.facebook.com/docs/graph-api/reference/ads_archive/
+
+
+Security Checklist
+------------------
+
+- Store tokens only in .env or a secure secret manager.
+- Do not commit .env.
+- Do not hard-code tokens in Python files.
+- Regenerate tokens if exposed.
+- Use the lowest access level needed.
+- Monitor API usage and rate-limit responses.
+- Review X and Meta platform policies before collecting production data.

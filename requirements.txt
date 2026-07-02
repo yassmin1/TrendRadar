@@ -1,0 +1,16 @@
+python-dotenv>=1.0.1
+pydantic>=2.7.0
+pydantic-settings>=2.2.1
+pandas>=2.2.2
+numpy>=1.26.4
+requests>=2.32.0
+feedparser>=6.0.11
+tenacity>=8.2.3
+streamlit>=1.35.0
+plotly>=5.22.0
+textblob>=0.18.0
+nltk>=3.8.1
+scikit-learn>=1.5.0
+pytest>=8.2.0
+SQLAlchemy>=2.0.30
+psycopg2-binary>=2.9.9

@@ -1,0 +1,553 @@
+Social Media Trend Tracker - Project Overview
+=============================================
+
+Project Description
+-------------------
+
+Social Media Trend Tracker is a Python and Streamlit application for monitoring
+public social media trends. It collects public posts or public ad data from
+supported platforms, normalizes the data into one common schema, detects
+emerging topics, analyzes sentiment, forecasts trend movement, and displays
+explainable results in an interactive dashboard.
+
+The project is designed to be safe, cost-aware, explainable, and easy to run
+locally. It does not scrape private data, private Facebook profiles, private
+groups, private messages, or restricted user content. API keys and tokens are
+loaded from environment variables, not hard-coded in source files.
+
+
+Main Goal
+---------
+
+The goal is to help users identify, explain, and monitor emerging public trends
+across social media sources.
+
+The app helps answer:
+
+- What topics are growing quickly?
+- Which hashtags, links, mentions, and sources are amplifying a topic?
+- Is sentiment positive, negative, or neutral?
+- How confident is the sentiment result?
+- Which post or source may have started or amplified a trend?
+- Is a trend growing, flat, peaking, or declining?
+- Why does the system think a topic is trending?
+- Is the collected dataset complete and reliable enough to trust?
+
+
+Supported Data Sources
+----------------------
+
+Current supported sources:
+
+- X / Twitter API v2 recent search for public keyword and hashtag search.
+- Meta Ad Library API for public ad and campaign trend analysis.
+- Optional Facebook Pages collection when proper Meta approval or authorized
+  page access exists.
+- GDELT DOC API for free global news trend signals.
+- RSS / Atom feeds for free public feed monitoring.
+- Wikipedia Pageviews API for free public-interest spikes.
+- Hacker News Firebase API for free technology and startup trend signals.
+
+Meta Ad Library collection is optional and disabled by default. Facebook Pages
+collection is optional because Meta may require Page Public Content Access
+approval.
+
+
+High-Level Architecture
+-----------------------
+
+Main runtime:
+
+  main.py
+
+Dashboard:
+
+  dashboard/app.py
+
+Collectors:
+
+  src/collectors/x_collector.py
+  src/collectors/meta_ad_library_collector.py
+  src/collectors/facebook_pages_collector.py
+  src/collectors/gdelt_collector.py
+  src/collectors/rss_collector.py
+  src/collectors/wikipedia_collector.py
+  src/collectors/hackernews_collector.py
+
+Processing:
+
+  src/processing/clean_text.py
+  src/processing/normalize_schema.py
+  src/processing/deduplicate.py
+
+Analysis:
+
+  src/analysis/sentiment_analysis.py
+  src/analysis/topic_modeling.py
+  src/analysis/topic_clustering.py
+  src/analysis/trend_detection.py
+  src/analysis/forecasting.py
+  src/analysis/network_analysis.py
+  src/analysis/source_ranking.py
+  src/analysis/quality.py
+  src/analysis/explanations.py
+  src/analysis/alerts.py
+
+Storage and utilities:
+
+  src/storage/database.py
+  src/storage/export.py
+  src/utils/config.py
+  src/utils/cost_control.py
+  src/utils/health.py
+  src/utils/logging_config.py
+  src/utils/retry.py
+
+
+Inputs
+------
+
+The project can run with mock data or live API data.
+
+Common inputs:
+
+- Search keywords such as AI, football, election, or a brand name.
+- Hashtags such as #climate or #sports.
+- Platform/source options, such as X only or X plus Meta Ad Library.
+- Country filter for Meta Ad Library, such as US.
+- Maximum API pages per query.
+- API tokens stored in .env.
+- Cost-control settings for X.
+- Sentiment, trend, and alert settings.
+
+Important environment variables:
+
+  API_MODE=mock
+  X_BEARER_TOKEN=
+  X_COLLECTION_MODE=cheap_first
+  X_CACHE_TTL_MINUTES=360
+  X_DAILY_REQUEST_BUDGET=5
+  ENABLE_API_HEALTH_ON_RUN=false
+  COLLECT_META=false
+  META_ACCESS_TOKEN=
+  COLLECT_GDELT=true
+  COLLECT_RSS=false
+  RSS_FEEDS=https://hnrss.org/frontpage,https://www.reddit.com/r/technology/.rss
+  COLLECT_WIKIPEDIA=true
+  WIKIPEDIA_ARTICLES=Artificial intelligence,Climate change,Election
+  COLLECT_HACKERNEWS=true
+  FACEBOOK_PAGE_ACCESS_TOKEN=
+  FACEBOOK_PAGE_IDS=
+  DEFAULT_COUNTRY=US
+  MAX_PAGES_PER_QUERY=3
+  REQUEST_TIMEOUT_SECONDS=30
+  SCHEDULE_MINUTES=60
+  DATABASE_URL=
+  TREND_WINDOW=6h
+  TREND_Z_THRESHOLD=1.0
+  ALERT_Z_THRESHOLD=2.0
+  ALERT_GROWTH_THRESHOLD=1.0
+  ALERT_MIN_POSTS=3
+  ALERT_WEBHOOK_URL=
+  SENTIMENT_BACKEND=auto
+
+
+Cost-Efficient X Collection
+---------------------------
+
+X API credits can be expensive, so the app avoids unnecessary X calls.
+
+Default mode:
+
+  X_COLLECTION_MODE=cheap_first
+
+In cheap-first mode, the app tries cheaper sources first. It only calls X if
+those cheaper sources produce alert-worthy topics. If no cheap live source is
+enabled, or no alert-worthy topic is found, X is skipped and fallback data is
+written so the dashboard still works.
+
+The cheap/free sources currently used before X are:
+
+- GDELT news articles.
+- RSS feeds.
+- Wikipedia pageviews.
+- Hacker News stories.
+- Optional Meta Ad Library if enabled.
+
+Available X modes:
+
+  off
+    Never call X.
+
+  cheap_first
+    Use cheaper sources first and call X only when a topic is worth confirming.
+    This is the recommended cost-efficient mode.
+
+  budgeted
+    Call X for requested queries, but still use cache and daily request limits.
+
+Cost controls:
+
+  X_CACHE_TTL_MINUTES=360
+    Reuse cached X responses for 6 hours.
+
+  X_DAILY_REQUEST_BUDGET=5
+    Limit real X API requests per day.
+
+  ENABLE_API_HEALTH_ON_RUN=false
+    Avoid spending calls on API health checks during normal runs.
+
+Cost-aware commands:
+
+  python main.py --live --query AI --max-pages 1
+    Cost-efficient default. May skip X.
+
+  python main.py --live --force-x --query AI --max-pages 1
+    Force X for this run.
+
+  python main.py --live --x-mode budgeted --query AI --max-pages 1
+    Use X with cache and daily budget controls.
+
+  python main.py --live --x-mode off --query AI
+    Disable X completely.
+
+
+Processing Pipeline
+-------------------
+
+The pipeline performs these steps:
+
+1. Apply API cost controls, cache checks, and daily request budgets.
+2. Collect public data from enabled official API sources.
+3. Save raw API responses when live collection succeeds.
+4. Normalize all records into one unified schema.
+5. Clean text and extract hashtags, mentions, and shared links.
+6. Normalize timestamps to UTC.
+7. Remove duplicate records by platform and post ID.
+8. Add explainable sentiment labels, scores, confidence, subjectivity, backend,
+   and reason fields.
+9. Infer or preserve topics.
+10. Group related topic labels.
+11. Cluster similar posts with TF-IDF and KMeans.
+12. Detect emerging trends using rolling baseline and z-score spike detection.
+13. Assign trend lifecycle labels.
+14. Forecast next-window trend growth.
+15. Build network-style influence summaries.
+16. Rank likely trend sources and amplifiers.
+17. Score data quality.
+18. Generate plain-language trend explanations.
+19. Generate alert records and optionally send webhook alerts.
+20. Save processed data to CSV and SQLite or PostgreSQL.
+21. Record collection-run status and API health metadata.
+
+
+Unified Data Schema
+-------------------
+
+Core normalized post columns:
+
+  platform
+  source_type
+  source_name
+  source_id
+  post_id
+  created_at
+  text
+  language
+  url
+  hashtags
+  mentions
+  shared_links
+  engagement_count
+  like_count
+  comment_count
+  share_count
+  view_count
+  impression_count
+  country
+  topic
+  topic_group
+  topic_cluster
+  topic_cluster_label
+  sentiment_label
+  sentiment_score
+  sentiment_confidence
+  sentiment_subjectivity
+  sentiment_backend
+  sentiment_reason
+  collected_at
+
+
+Data Science Features
+---------------------
+
+1. Modern sentiment analysis
+   The app supports configurable sentiment backends:
+
+     SENTIMENT_BACKEND=auto
+     SENTIMENT_BACKEND=vader
+     SENTIMENT_BACKEND=textblob
+     SENTIMENT_BACKEND=lexicon
+
+   It outputs label, score, confidence, subjectivity, backend, and explanation.
+
+2. Topic grouping
+   Related labels such as AI, ChatGPT, OpenAI, and GenAI can be grouped into a
+   cleaner topic group.
+
+3. Topic clustering
+   Similar posts are clustered with TF-IDF and KMeans. This reduces noisy
+   keyword-level views into cleaner groups.
+
+4. Trend detection
+   The app groups posts by topic and time window, calculates baselines and
+   z-scores, and labels lifecycle stages such as new, emerging, rising, peak,
+   declining, and stable.
+
+5. Forecasting
+   The app estimates next-window post count and labels each topic as growing,
+   flat, or declining.
+
+6. Network influence analysis
+   The app scores repeated hashtags, links, mentions, and sources using count,
+   co-occurrence, and engagement signals.
+
+7. Trend source ranking
+   The app ranks possible trend origins using earliest post time, engagement,
+   repeated URLs, repeated hashtags, repeated phrases, and amplification score.
+
+8. Automated explanations
+   The app produces plain-language explanations for why a topic appears to be
+   trending.
+
+9. Data quality scoring
+   The app reports completeness, duplicate ratio, timestamp validity, and an
+   overall quality score.
+
+10. Alerts
+   The app generates trend alerts and can send Slack/Discord-compatible webhook
+   notifications through ALERT_WEBHOOK_URL.
+
+
+Outputs
+-------
+
+Local processed outputs:
+
+  data/processed/unified_posts.csv
+  data/processed/trends.csv
+  data/processed/alerts.jsonl
+  data/processed/topic_clusters.csv
+  data/processed/forecasts.csv
+  data/processed/network_summary.csv
+  data/processed/data_quality.csv
+  data/processed/trend_explanations.csv
+  data/processed/collection_runs.jsonl
+
+Local database:
+
+  data/trends.db
+
+SQLite/PostgreSQL tables:
+
+  posts
+  trends
+  topic_clusters
+  forecasts
+  network_summary
+  data_quality
+  trend_explanations
+  collection_runs
+
+Cost-control state:
+
+  data/cache/
+  data/state/x_api_daily_budget.json
+
+
+Dashboard Features
+------------------
+
+The Streamlit dashboard includes:
+
+- Front-page pipeline runner for choosing collection options and running
+  main.py from the UI.
+- Collection and API status panel.
+- Keyword search.
+- Platform filter.
+- Date filter.
+- Topic group, sentiment, country, and source type filters.
+- Configurable trend window.
+- Spike sensitivity control.
+- Trend timeline.
+- Trend lifecycle chart.
+- Trend detail view.
+- Forecast and explanation for selected trend.
+- Data Science tab with quality checks, topic clusters, forecasts, network
+  influence, and explanations.
+- Top sources table.
+- Top hashtags.
+- Sentiment over time.
+- Sentiment confidence and explanation fields.
+- Most shared links.
+- Possible trend origin table.
+- Current and stored trend alerts.
+- Raw data preview.
+- CSV export.
+
+
+Front-Page Runner Options
+-------------------------
+
+The Streamlit app includes a front-page "Run Collection" form. It lets users
+run the pipeline without typing commands in a terminal.
+
+Available UI options:
+
+- Run mode: mock or live.
+- Query list, one query per line.
+- Max pages per query.
+- Meta country code.
+- X mode: cheap_first, off, or budgeted.
+- Force X for one run.
+- Include Meta Ad Library.
+- Enable or disable GDELT.
+- Enable or disable Hacker News.
+- Enable or disable Wikipedia Pageviews.
+- Enable or disable RSS feeds.
+- RSS feed URLs.
+- Wikipedia article names.
+- Sentiment backend: auto, vader, textblob, or lexicon.
+- Pipeline trend window: 1h, 6h, 24h, or 7d.
+- Trend z-threshold.
+
+When the user clicks "Run Pipeline", the dashboard builds a local command for
+main.py, applies the selected options through CLI flags and environment
+variables, shows the command output, clears cached dashboard data, and reloads
+the dashboard with the new results.
+
+
+How To Run
+----------
+
+Install dependencies:
+
+  pip install -r requirements.txt
+
+Run with mock or fallback data:
+
+  python main.py
+  streamlit run dashboard/app.py
+
+Open:
+
+  http://localhost:8501
+
+If another Streamlit process is already using 8501, use another port:
+
+  streamlit run dashboard/app.py --server.port 8504
+
+Run from the dashboard front page:
+
+  1. Start Streamlit.
+  2. Open the local URL.
+  3. Use the "Run Collection" form.
+  4. Choose sources, X cost mode, sentiment backend, trend window, and queries.
+  5. Click "Run Pipeline".
+
+Run live mode while avoiding X unless cheaper sources show a trend:
+
+  python main.py --live --query AI --max-pages 1
+
+Force X collection:
+
+  python main.py --live --force-x --query AI --max-pages 1
+
+Run X in budgeted mode:
+
+  python main.py --live --x-mode budgeted --query AI --max-pages 1
+
+Disable X completely:
+
+  python main.py --live --x-mode off --query AI
+
+Run with Meta Ad Library enabled:
+
+  python main.py --live --include-meta --query AI --country US --max-pages 1
+
+Run with free sources only and X disabled:
+
+  python main.py --live --x-mode off --query AI
+
+Enable RSS collection by setting:
+
+  COLLECT_RSS=true
+  RSS_FEEDS=https://hnrss.org/frontpage,https://example.com/feed.xml
+
+Run an API health check:
+
+  python main.py --health-check
+  python main.py --health-check --include-meta
+
+Run scheduled collection:
+
+  python main.py --schedule --schedule-minutes 60
+
+Use PostgreSQL instead of local SQLite:
+
+  DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/trend_tracker
+
+
+Important API Notes
+-------------------
+
+X collection requires an X API v2 bearer token. If the account has no available
+credits or the plan does not include recent search, X may return an error such
+as 402 CreditsDepleted.
+
+Meta Ad Library requires a valid Meta access token and appropriate API access.
+Meta collection is optional and disabled by default.
+
+The app is designed to keep running even if live API collection fails. If no
+live records are collected, it writes fallback mock data so the dashboard can
+still be used locally.
+
+When X credits are limited, use cheap-first mode, small max-pages values, narrow
+queries, caching, and daily budgets. Avoid broad scheduled X searches unless the
+account has enough API credits.
+
+Useful health-check commands:
+
+  python main.py --health-check
+  python main.py --health-check --include-meta
+
+Common health-check results:
+
+  x_api: no_credits
+    The X token/account is recognized, but the account has no available credits
+    for the recent search endpoint.
+
+  meta_ad_library: access_denied
+    The Meta token is invalid, expired, tied to a deleted app, or the app/token
+    does not have Meta Ad Library API permission.
+
+  meta_ad_library: ok
+    The token can access the Meta Ad Library endpoint.
+
+Free-source notes:
+
+- GDELT is free but can return 429 rate-limit responses.
+- RSS requires feedparser from requirements.txt.
+- Wikipedia Pageviews is free and useful for public-interest spikes.
+- Hacker News is free and useful for technology/business topics.
+- These sources are used before X to reduce paid X API usage.
+
+
+Project Purpose
+---------------
+
+This project is useful for researchers, analysts, marketers, students, and
+developers who want to study how public topics spread across social platforms.
+It provides a modular foundation for collecting public data, analyzing trends,
+forecasting movement, ranking sources, explaining trend drivers, and monitoring
+data quality.
