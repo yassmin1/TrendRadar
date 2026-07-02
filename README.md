@@ -1,170 +1,192 @@
-# Social Media Trend Tracker
+# TrendRadar
 
-A Python 3.11+ system for collecting public social media data from X API v2 and Meta Ad Library, normalizing it into one schema, detecting emerging trends, scoring sentiment, and exploring results in a Streamlit dashboard.
+TrendRadar is a Python and Streamlit application for spotting emerging public trends before they become obvious. It collects signals from public web, news, social, research, and community sources, normalizes them into one dataset, detects spikes, scores sentiment, forecasts momentum, and turns the results into an interactive dashboard.
 
-The supported sources are:
+Instead of only showing raw posts, TrendRadar helps answer the questions analysts actually ask:
 
-- X API v2 recent search for public keyword and hashtag search.
-- Meta Ad Library API for public ads and campaign-related trend analysis.
-- Optional Facebook Pages collector for approved Page Public Content Access or authorized page tokens.
-- GDELT, Google News RSS, Reddit public search, Stack Exchange, arXiv, OpenAlex, Wikinews, RSS feeds, Wikipedia Pageviews, and Hacker News as free/low-cost trend signals.
+- What topics are starting to move right now?
+- Is the conversation growing, peaking, declining, or staying flat?
+- Which hashtags, links, sources, and mentions are amplifying the trend?
+- Is the public mood positive, negative, or neutral?
+- Why does the system think this topic is trending?
+- Which source may have started or accelerated the conversation?
+- Is the data complete and reliable enough to trust?
 
-The project does not collect private Facebook profiles, private groups, restricted user data, or private user content.
+![TrendRadar dashboard cover](app_coverpage.png)
+
+## What It Does
+
+TrendRadar turns scattered public signals into a readable trend intelligence workflow:
+
+1. Collect public data from enabled sources.
+2. Clean and normalize every record into one schema.
+3. Deduplicate posts and standardize timestamps.
+4. Extract hashtags, mentions, shared links, topics, and engagement signals.
+5. Analyze sentiment with configurable backends.
+6. Cluster similar posts and group related topics.
+7. Detect emerging trends using rolling windows and spike scores.
+8. Forecast whether each trend is likely to grow, flatten, or decline.
+9. Rank possible origin sources and amplifiers.
+10. Generate plain-language trend explanations and alerts.
+11. Save results to CSV and SQLite or PostgreSQL.
+12. Display everything in a Streamlit dashboard.
+
+## Signal Sources
+
+TrendRadar is designed to be useful even when paid API access is limited. It can run with mock data, free public sources, or live API sources.
+
+Supported collectors include:
+
+- X API v2 recent search for public keyword and hashtag monitoring.
+- Meta Ad Library for public ads and campaign trend analysis.
+- Facebook Pages when approved Page Public Content Access or authorized tokens are available.
+- GDELT for global news signals.
+- Google News RSS for public news search.
+- Reddit public search.
+- Stack Exchange questions.
+- arXiv papers.
+- OpenAlex scholarly works.
+- Wikinews pages.
+- Wikipedia Pageviews for public-interest spikes.
+- Hacker News for technology and startup signals.
+- RSS or Atom feeds.
+
+The app does not collect private Facebook profiles, private groups, private messages, restricted user data, or private user content.
+
+## Dashboard Highlights
+
+The Streamlit dashboard is built for exploration, not just reporting. It includes:
+
+- A front-page pipeline runner so users can collect data without typing commands.
+- Collection status and API health visibility.
+- Keyword, platform, date, topic, sentiment, country, and source filters.
+- Trend timelines and lifecycle labels such as new, emerging, rising, peak, declining, and stable.
+- Forecasts for next-window movement.
+- Sentiment over time with confidence and explanation fields.
+- Topic clusters and topic groups for cleaner analysis.
+- Network-style influence summaries based on sources, hashtags, links, and mentions.
+- Possible trend origin ranking.
+- Current and stored trend alerts.
+- Data quality checks.
+- Raw data preview and CSV export.
+
+## Cost-Aware API Design
+
+X API credits can be limited or expensive, so TrendRadar includes budget controls.
+
+Available X modes:
+
+- `off`: never call X.
+- `cheap_first`: use free or cheaper sources first, then call X only when a topic looks alert-worthy.
+- `budgeted`: call X for requested queries while respecting cache and daily request limits.
+
+Useful settings:
+
+```env
+X_COLLECTION_MODE=cheap_first
+X_CACHE_TTL_MINUTES=360
+X_DAILY_REQUEST_BUDGET=5
+ENABLE_API_HEALTH_ON_RUN=false
+```
+
+This lets the app keep producing useful trend data while avoiding unnecessary paid API calls.
 
 ## Project Structure
 
 ```text
-src/
-  collectors/
-    x_collector.py
-    meta_ad_library_collector.py
-    facebook_pages_collector.py
-  processing/
-    clean_text.py
-    normalize_schema.py
-    deduplicate.py
-  analysis/
-    trend_detection.py
-    sentiment_analysis.py
-    topic_modeling.py
-    source_ranking.py
+TrendRadar/
+  main.py
   dashboard/
-  storage/
-    database.py
-    export.py
-  utils/
-    config.py
-    logging_config.py
-    retry.py
-dashboard/
-  app.py
-tests/
-main.py
-.env.example
-requirements.txt
+    app.py
+  src/
+    collectors/
+    processing/
+    analysis/
+    storage/
+    utils/
+  tests/
+  requirements.txt
 ```
 
-The modern runnable path is `main.py` plus the package layout above.
+Important modules:
+
+- `main.py`: runs collection, processing, analysis, storage, alerts, and scheduling.
+- `dashboard/app.py`: Streamlit interface for running and exploring the system.
+- `src/collectors/`: source-specific public data collectors.
+- `src/processing/`: text cleaning, schema normalization, and deduplication.
+- `src/analysis/`: sentiment, clustering, forecasting, trend detection, explanations, alerts, and quality scoring.
+- `src/storage/`: CSV and database output.
+- `src/utils/`: configuration, retry logic, health checks, logging, and API cost controls.
 
 ## Setup
+
+Create a virtual environment and install dependencies:
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+Create your local environment file:
+
+```bash
 copy .env.example .env
 ```
 
-Edit `.env` for live collection:
+Keep `.env` out of git. API keys and tokens should only be stored locally through environment variables.
 
-```env
-API_MODE=live
-X_BEARER_TOKEN=your_x_api_v2_bearer_token
-X_COLLECTION_MODE=cheap_first
-X_CACHE_TTL_MINUTES=360
-X_DAILY_REQUEST_BUDGET=5
-ENABLE_API_HEALTH_ON_RUN=false
-COLLECT_META=false
-META_ACCESS_TOKEN=your_meta_graph_api_token
-COLLECT_GDELT=true
-COLLECT_GOOGLE_NEWS=true
-COLLECT_REDDIT=true
-COLLECT_STACKEXCHANGE=true
-FREE_SOURCE_MAX_RECORDS=100
-COLLECT_RSS=false
-RSS_FEEDS=https://hnrss.org/frontpage,https://www.reddit.com/r/technology/.rss
-COLLECT_WIKIPEDIA=true
-WIKIPEDIA_ARTICLES=Artificial intelligence,Climate change,Election
-COLLECT_HACKERNEWS=true
-DEFAULT_COUNTRY=US
-MAX_PAGES_PER_QUERY=3
-SCHEDULE_MINUTES=60
-DATABASE_URL=
-TREND_WINDOW=6h
-TREND_Z_THRESHOLD=1.0
-ALERT_Z_THRESHOLD=2.0
-ALERT_GROWTH_THRESHOLD=1.0
-ALERT_MIN_POSTS=3
-ALERT_WEBHOOK_URL=
-SENTIMENT_BACKEND=auto
-```
+## Quick Start
 
-Keep `.env` out of git. All API keys and tokens must come from environment variables.
-
-## Run Locally
-
-Mock mode works without real API credentials:
+Run the full pipeline with mock or fallback data:
 
 ```bash
 python main.py
+```
+
+Start the dashboard:
+
+```bash
 streamlit run dashboard/app.py
 ```
 
-Live mode uses official APIs:
+Then open:
+
+```text
+http://localhost:8501
+```
+
+## Run With Live Sources
+
+Run live collection with cheap-first behavior:
 
 ```bash
 python main.py --live --query "AI" --query "#climate" --country US --max-pages 2
-streamlit run dashboard/app.py
 ```
 
-By default, X is cost-controlled with `X_COLLECTION_MODE=cheap_first`. In that mode the app uses cheaper sources first and does not spend X credits unless those sources produce alert-worthy topics. If Meta is disabled and no cheap live source is available, X is skipped and local fallback data is written.
-
-Free/low-cost sources can run before X:
-
-- `COLLECT_GDELT=true`
-- `COLLECT_GOOGLE_NEWS=true` uses Google News' public RSS keyword search.
-- `COLLECT_REDDIT=true` uses Reddit's public keyword search.
-- `COLLECT_STACKEXCHANGE=true` searches recent Stack Overflow questions.
-- `COLLECT_ARXIV=true` searches public arXiv papers.
-- `COLLECT_OPENALEX=true` searches public OpenAlex scholarly works.
-- `COLLECT_WIKINEWS=true` searches public Wikinews pages.
-- `COLLECT_WIKIPEDIA=true`
-- `COLLECT_HACKERNEWS=true`
-- `COLLECT_RSS=true` with `RSS_FEEDS=...`
-
-To force an X call for a run:
+Force an X API call for one run:
 
 ```bash
 python main.py --live --force-x --query "AI" --max-pages 1
 ```
 
-`FREE_SOURCE_MAX_RECORDS` controls the per-query limit for free search sources (default `100`). `LIVE_LOOKBACK_DAYS` keeps live trend analysis focused on recent records and drops future-dated or stale search results (default `90`). GDELT accepts up to `250` records per query. These sources do not require credentials, but individual providers may apply rate limits or temporarily reject a request; a failure in one source does not stop the rest of the collection.
-
-To use X normally but with cache and daily budget controls:
+Use X with budget and cache controls:
 
 ```bash
 python main.py --live --x-mode budgeted --query "AI" --max-pages 1
 ```
 
-Cost controls:
+Disable X completely:
 
-- `X_COLLECTION_MODE=off`: never call X.
-- `X_COLLECTION_MODE=cheap_first`: only call X after cheaper sources indicate an alert-worthy topic.
-- `X_COLLECTION_MODE=budgeted`: call X for requested queries, using cache and daily budget limits.
-- `X_CACHE_TTL_MINUTES=360`: reuse cached X responses for 6 hours.
-- `X_DAILY_REQUEST_BUDGET=5`: allow at most 5 real X API requests per day.
-- `ENABLE_API_HEALTH_ON_RUN=false`: avoids spending X search calls on every normal run.
+```bash
+python main.py --live --x-mode off --query "AI"
+```
 
-Meta Ad Library collection is optional and disabled by default. Enable it for a run with:
+Enable Meta Ad Library for a run:
 
 ```bash
 python main.py --live --include-meta --query "AI" --country US --max-pages 2
 ```
-
-Or enable it in `.env`:
-
-```env
-COLLECT_META=true
-```
-
-Run an API health check:
-
-```bash
-python main.py --health-check
-python main.py --health-check --include-meta
-```
-
-Health checks may call provider endpoints. Run them intentionally, not on every schedule, when cost matters.
 
 Run scheduled collection:
 
@@ -172,81 +194,123 @@ Run scheduled collection:
 python main.py --schedule --schedule-minutes 60
 ```
 
-Use PostgreSQL instead of local SQLite by setting `DATABASE_URL`:
+## Environment Configuration
+
+Common `.env` settings:
+
+```env
+API_MODE=live
+
+X_BEARER_TOKEN=your_x_api_v2_bearer_token
+X_COLLECTION_MODE=cheap_first
+X_CACHE_TTL_MINUTES=360
+X_DAILY_REQUEST_BUDGET=5
+ENABLE_API_HEALTH_ON_RUN=false
+
+COLLECT_META=false
+META_ACCESS_TOKEN=your_meta_graph_api_token
+
+COLLECT_GDELT=true
+COLLECT_GOOGLE_NEWS=true
+COLLECT_REDDIT=true
+COLLECT_STACKEXCHANGE=true
+COLLECT_ARXIV=true
+COLLECT_OPENALEX=true
+COLLECT_WIKINEWS=true
+COLLECT_WIKIPEDIA=true
+COLLECT_HACKERNEWS=true
+COLLECT_RSS=false
+RSS_FEEDS=https://hnrss.org/frontpage,https://www.reddit.com/r/technology/.rss
+
+DEFAULT_COUNTRY=US
+MAX_PAGES_PER_QUERY=3
+FREE_SOURCE_MAX_RECORDS=100
+LIVE_LOOKBACK_DAYS=90
+SCHEDULE_MINUTES=60
+
+TREND_WINDOW=6h
+TREND_Z_THRESHOLD=1.0
+ALERT_Z_THRESHOLD=2.0
+ALERT_GROWTH_THRESHOLD=1.0
+ALERT_MIN_POSTS=3
+ALERT_WEBHOOK_URL=
+
+SENTIMENT_BACKEND=auto
+DATABASE_URL=
+```
+
+Use PostgreSQL instead of local SQLite by setting:
 
 ```env
 DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/trend_tracker
 ```
 
-Outputs:
+## Outputs
 
-- `data/raw/x/*.json`: raw X API responses.
-- `data/raw/meta_ads/*.json`: raw Meta Ad Library responses.
-- `data/processed/unified_posts.csv`: normalized dashboard data.
-- `data/processed/trends.csv`: detected trend windows.
-- `data/processed/collection_runs.jsonl`: collection run status and API health checks.
-- `data/trends.db`: local SQLite copy.
+TrendRadar writes local analysis outputs under `data/`:
 
-## API Access And Limits
+```text
+data/processed/unified_posts.csv
+data/processed/trends.csv
+data/processed/alerts.jsonl
+data/processed/topic_clusters.csv
+data/processed/forecasts.csv
+data/processed/network_summary.csv
+data/processed/data_quality.csv
+data/processed/trend_explanations.csv
+data/processed/collection_runs.jsonl
+data/trends.db
+```
 
-X collection uses API v2 recent search and requests post ID, text, author ID, creation time, language, public metrics, entities, URLs, mentions, hashtags, and conversation ID when available. Pagination uses `next_token`, and 429 responses are handled with backoff.
+Raw live API responses are stored under source-specific folders such as `data/raw/x/` and `data/raw/meta_ads/`.
 
-Meta collection uses the public Ad Library API. It supports keyword search, country, active status, delivery dates, page ID where available, public ad text, impressions, spend ranges, page name, and page ID when returned by Meta.
+## Unified Data Schema
 
-Facebook Page collection is optional. It requires approved Page Public Content Access or an authorized page token. Do not use it for private profiles, private groups, or restricted content.
-
-API availability, fields, and rate limits depend on your developer account, product approval, and current platform rules.
-
-## Unified Schema
-
-The normalized dataset includes:
+Normalized records include:
 
 ```text
 platform, source_type, source_name, source_id, post_id, created_at, text,
 language, url, hashtags, mentions, shared_links, engagement_count,
 like_count, comment_count, share_count, view_count, impression_count,
-country, topic, sentiment_label, sentiment_score, collected_at
+country, topic, topic_group, topic_cluster, topic_cluster_label,
+sentiment_label, sentiment_score, sentiment_confidence,
+sentiment_subjectivity, sentiment_backend, sentiment_reason, collected_at
 ```
 
-Timestamps are normalized to UTC. Duplicate records are removed by `platform` and `post_id`.
+Timestamps are normalized to UTC, and duplicate records are removed by source and post identity.
 
-## Dashboard
+## Alerts
 
-The Streamlit dashboard includes:
+TrendRadar can generate alert records when a topic crosses configured spike and growth thresholds. Alerts are saved locally and can also be sent to Slack or Discord-compatible webhooks.
 
-- Keyword search.
-- Platform and date filters.
-- Topic group, sentiment, country, and source type filters.
-- Configurable trend windows.
-- Trend timeline.
-- Trend lifecycle labels: new, emerging, rising, peak, declining, stable.
-- Trend detail view.
-- Top sources table.
-- Top hashtags.
-- Sentiment over time.
-- Sentiment confidence and explanation fields.
-- Most shared links.
-- Possible trend origin table.
-- Current and stored trend alerts.
-- Data Science tab with topic clusters, forecasts, network influence, quality checks, and trend explanations.
-- Raw data preview.
-- CSV export.
+```env
+ALERT_WEBHOOK_URL=https://your-webhook-url
+ALERT_Z_THRESHOLD=2.0
+ALERT_GROWTH_THRESHOLD=1.0
+ALERT_MIN_POSTS=3
+```
 
-Additional data science outputs:
+## API Health Checks
 
-- `data/processed/topic_clusters.csv`
-- `data/processed/forecasts.csv`
-- `data/processed/network_summary.csv`
-- `data/processed/data_quality.csv`
-- `data/processed/trend_explanations.csv`
+Run health checks intentionally, especially when API credits are limited:
 
-Alerts are generated during pipeline runs and saved to `data/processed/alerts.jsonl`.
-Set `ALERT_WEBHOOK_URL` to send Slack/Discord-compatible webhook notifications.
+```bash
+python main.py --health-check
+python main.py --health-check --include-meta
+```
+
+The app is designed to keep working even when a live provider fails. If no live records are collected, it can write fallback data so the dashboard remains usable locally.
 
 ## Tests
+
+Run the test suite:
 
 ```bash
 pytest -q
 ```
 
-Current unit tests cover text cleaning, schema normalization, deduplication, and trend detection.
+Tests cover cleaning, normalization, deduplication, sentiment, alerts, cost controls, trend detection, topic modeling, and free-source behavior.
+
+## Built For
+
+TrendRadar is useful for researchers, marketers, analysts, students, and developers who want a practical way to monitor public conversation. It combines collection, explainable analytics, forecasting, alerts, and a dashboard into one local-first trend intelligence app.
